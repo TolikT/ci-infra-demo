@@ -131,6 +131,7 @@ docker ps
 .. <vm2_ip>/sonarqube
 .. <vm2_ip>/jenkins
 . Default credentials for sonarqube are `admin/admin`
+. In sonarqube navigate to `Administration -> Marketplace` and install java and jacoco plugins
 . Initial jenkins configuration
 .. Following instructions, enter initial admin password that can be displayed
 using command
