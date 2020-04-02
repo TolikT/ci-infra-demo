@@ -1,0 +1,152 @@
+= ci-infra-demo
+
+Repository that contains configuration to quickly deploy following tools with docker-compose:
+
+. nginx
+. jenkins
+. nexus
+. sonarqube
+
+== Initial conditions
+
+2 VMs with docker and docker-compose installed and static IP addresses
+
+=== Docker installation
+
+. Install link:https://docs.docker.com/install/linux/docker-ce/centos/[docker]
++
+.. `/etc/docker/daemon.json` example
++
+[code, json]
+----
+{
+  "storage-driver": "overlay2",
+  "insecure-registries": [
+  ],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "3"
+  }
+}
+----
++
+.. To start docker after VM reboot
++
+[code, shell]
+----
+systemctl enable docker
+----
++
+. Install link:https://docs.docker.com/compose/install/[docker-compose]
+. To be able run link:https://hub.docker.com/_/sonarqube/[sonarqube] execute following commands on the VM where sonarcube will be placed
++
+[code, shell]
+----
+sysctl -w vm.max_map_count=262144
+sysctl -w fs.file-max=65536
+ulimit -n 65536
+ulimit -u 4096
+----
+
+== Deploying infra
+
+First VM will host only nexus, second is for all other components
+
+=== First VM
+
+. Execute
++
+[code, shell]
+----
+mkdir poc
+cd poc
+mkdir -p volumes/nexus/nexus-data
+mkdir volumes/nexus/sonatype-work
+chmod -R 777 volumes
+----
++
+. Place `vm1.yaml` to `poc` dir
+. Execute
++
+[code, shell]
+----
+docker-compose -f vm1.yaml up -d
+----
++
+. Verify installation
++
+[code, shell]
+----
+docker ps
+----
++
+. Navigate to `<vm1_ip>:8081/nexus` and login. Initial admin password can be seen by command
++
+[code, shell]
+----
+cat volumes/nexus/sonatype-work/nexus3/admin.password
+----
++
+. To create any kind of registry - maven/docker/npm and so on - navigate to
+`Server administration and configuration -> Repositories -> Create repository`,
+but we will use default `maven-releases` repository that is already in nexus
+
+=== Second VM
+
+. Execute
++
+[code, shell]
+----
+mkdir poc
+cd poc
+mkdir -p volumes/jenkins
+mkdir -p volumes/sonarqube/conf
+mkdir volumes/sonarqube/data
+mkdir volumes/sonarqube/extensions
+mkdir volumes/sonarqube/logs
+mkdir volumes/sonarqube/bundled-plugins
+mkdir volumes/postgresql
+chmod -R 777 volumes
+----
++
+. Place `vm2.yaml` and `nginx.conf` to `poc` dir
+. Change ip addresses in `nginx.conf` to yours
+. Execute
++
+[code, shell]
+----
+docker-compose -f vm2.yaml up -d
+----
++
+. Verify installation
++
+[code, shell]
+----
+docker ps
+----
++
+. All tools should be accessible
+.. <vm2_ip>/nexus
+.. <vm2_ip>/sonarqube
+.. <vm2_ip>/jenkins
+. Default credentials for sonarqube are `admin/admin`
+. Initial jenkins configuration
+.. Following instructions, enter initial admin password that can be displayed
+using command
++
+[code, shell]
+----
+cat volumes/jenkins/secrets/initialAdminPassword
+----
++
+.. Following instructions, install default plugins and create first admin user
+.. Navigate to 'configure jenkins -> manage plugins' and install `Multibranch Scan Webhook Trigger` plugin
+.. Create jenkins secrets (left panel in main menu)
+... username/password for sonarqube with id `sonarqube`
+... username/password for nexus with id `nexus`
+... ssh key for git, public key should be added in your github profile settings
+.. Using the same job multibranch configuration, as in deployed jenkins,
+create the same job, but in configuration specify your git credentials
+and fork repository from `https://github.com/TolikT/springboot-sample`
+.. ip addresses in `gradle.properties` of `springboot-sample` repository should be changed to yours
