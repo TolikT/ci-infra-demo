@@ -1,0 +1,10 @@
+nexus:
+    image: 'sonatype/nexus3:3.22.0'
+    ports:
+      - '8081:8081'
+    environment:
+      - NEXUS_CONTEXT=nexus
+    volumes:
+      - './volumes/nexus/nexus-data:/nexus-data'
+      - './volumes/nexus/sonatype-work:/opt/sonatype/sonatype-work'
+    restart: always
